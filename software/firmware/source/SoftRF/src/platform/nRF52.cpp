@@ -4126,7 +4126,9 @@ static unsigned long nRF52_get_PPS_TimeMarker() {
 }
 
 static bool nRF52_Baro_setup() {
-  return nRF52_board == NRF52_SEEED_T1000E ? false : true;
+  return nRF52_board == NRF52_SEEED_T1000E ||
+         nRF52_board == NRF52_ELECROW_TN_M3 ?
+         false : true;
 }
 
 static void nRF52_UATSerial_begin(unsigned long baud)

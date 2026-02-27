@@ -55,6 +55,8 @@ byte SoC_setup()
   SoC = &CH32_ops;
 #elif defined(LUCKFOX_LYRA)
   SoC = &RK35_ops;
+#elif defined(ARDUINO_ARCH_NRF54L15CLEAN)
+  SoC = &nRF54_ops;
 #else
 #error "This hardware platform is not supported!"
 #endif

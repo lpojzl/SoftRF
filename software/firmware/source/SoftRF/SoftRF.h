@@ -25,7 +25,7 @@
 
 #if defined(ENERGIA_ARCH_CC13XX) || defined(ENERGIA_ARCH_CC13X2) || \
     defined(HACKRF_ONE)          || defined(ARDUINO_ARCH_AVR)    || \
-    defined(ARDUINO_ARCH_SILABS)
+    defined(ARDUINO_ARCH_SILABS) || defined(ARDUINO_ARCH_NRF54L15CLEAN)
 #include <TimeLib.h>
 #endif /* CC13XX || CC13X2 || HACKRF_ONE || AVR || SILABS */
 
