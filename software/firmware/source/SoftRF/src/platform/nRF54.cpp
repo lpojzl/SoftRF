@@ -168,7 +168,54 @@ static void nRF54_setup()
 
 static void nRF54_post_init()
 {
+  if (nRF54_board == NRF54_LR2021EVK1XCS1) {
+    Serial.println();
+    Serial.println(F("Board: Seeed & Semtech LR2021EVK1XCS1"));
+    Serial.println();
+    Serial.flush();
+  }
 
+  Serial.println(F("Data output device(s):"));
+
+  Serial.print(F("NMEA   - "));
+  switch (settings->nmea_out)
+  {
+    case NMEA_UART       :  Serial.println(F("UART"));          break;
+    case NMEA_USB        :  Serial.println(F("USB CDC"));       break;
+    case NMEA_BLUETOOTH  :  Serial.println(F("Bluetooth LE"));  break;
+    case NMEA_OFF        :
+    default              :  Serial.println(F("NULL"));          break;
+  }
+
+  Serial.print(F("GDL90  - "));
+  switch (settings->gdl90)
+  {
+    case GDL90_UART      :  Serial.println(F("UART"));          break;
+    case GDL90_USB       :  Serial.println(F("USB CDC"));       break;
+    case GDL90_BLUETOOTH :  Serial.println(F("Bluetooth LE"));  break;
+    case GDL90_OFF       :
+    default              :  Serial.println(F("NULL"));          break;
+  }
+
+  Serial.print(F("D1090  - "));
+  switch (settings->d1090)
+  {
+    case D1090_UART      :  Serial.println(F("UART"));          break;
+    case D1090_USB       :  Serial.println(F("USB CDC"));       break;
+    case D1090_BLUETOOTH :  Serial.println(F("Bluetooth LE"));  break;
+    case D1090_OFF       :
+    default              :  Serial.println(F("NULL"));          break;
+  }
+
+  Serial.println();
+  Serial.flush();
+
+#if defined(USE_OLED)
+  if (hw_info.display == DISPLAY_OLED_1_3 ||
+      hw_info.display == DISPLAY_OLED_TTGO) {
+    OLED_info1();
+  }
+#endif /* USE_OLED */
 }
 
 static void nRF54_loop()
@@ -345,7 +392,77 @@ static void nRF54_Battery_setup()
 
 static float nRF54_Battery_param(uint8_t param)
 {
-  float rval = 0;
+  uint32_t bat_adc_pin;
+  float rval, voltage, mult;
+
+  switch (param)
+  {
+  case BATTERY_PARAM_THRESHOLD:
+    rval = hw_info.model == SOFTRF_MODEL_ACADEMY  ? BATTERY_THRESHOLD_LIPO   :
+                                                    BATTERY_THRESHOLD_NIMHX2;
+    break;
+
+  case BATTERY_PARAM_CUTOFF:
+    rval = hw_info.model == SOFTRF_MODEL_ACADEMY  ? BATTERY_CUTOFF_LIPO   :
+                                                    BATTERY_CUTOFF_NIMHX2;
+    break;
+
+  case BATTERY_PARAM_CHARGE:
+    voltage = Battery_voltage();
+    if (voltage < Battery_cutoff())
+      return 0;
+
+    if (voltage > 4.2)
+      return 100;
+
+    if (voltage < 3.6) {
+      voltage -= 3.3;
+      return (voltage * 100) / 3;
+    }
+
+    voltage -= 3.6;
+    rval = 10 + (voltage * 150 );
+    break;
+
+  case BATTERY_PARAM_VOLTAGE:
+  default:
+    voltage = 0.0;
+#if 0
+    // Set the analog reference to 3.0V (default = 3.6V)
+    analogReference(AR_INTERNAL_3_0);
+#endif
+    // Set the resolution to 12-bit (0..4095)
+    analogReadResolution(12); // Can be 8, 10, 12 or 14
+
+    // Let the ADC settle
+    delay(1);
+
+    switch (nRF54_board)
+    {
+      case NRF54_LR2021EVK1XCS1:
+      default:
+        bat_adc_pin = SOC_GPIO_PIN_EVK_BATTERY;
+        mult        = SOC_ADC_EVK_VOLTAGE_DIV;
+        break;
+    }
+
+    // Get the raw 12-bit, 0..3000mV ADC value
+    voltage = analogRead(bat_adc_pin);
+
+    // Set the ADC back to the default settings
+#if 0
+    analogReference(AR_DEFAULT);
+#endif
+    analogReadResolution(10);
+
+    // Convert the raw value to compensated mv, taking the resistor-
+    // divider into account (providing the actual LIPO voltage)
+    // ADC range is 0..3000mV and resolution is 12-bit (0..4095)
+    voltage *= (mult * VBAT_MV_PER_LSB);
+
+    rval = voltage * 0.001;
+    break;
+  }
 
   return rval;
 }
@@ -359,7 +476,7 @@ static unsigned long nRF54_get_PPS_TimeMarker() {
 }
 
 static bool nRF54_Baro_setup() {
-  return false;
+  return true;
 }
 
 static void nRF54_UATSerial_begin(unsigned long baud)

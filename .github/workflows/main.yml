@@ -41,6 +41,7 @@ jobs:
             'CubeCell:CubeCell:CubeCell-GPS',
             'CubeCell:CubeCell:CubeCell-Board-PRO',
             'adafruit:nrf52:pca10056',
+            #'nrf54l15clean:nrf54l15clean:xiao_nrf54l15',
             'arduino:mbed_edge:edge_control',
             'arduino:zephyr_main:nano33ble',
             'arduino:samd:mzero_bl',
@@ -399,6 +400,12 @@ jobs:
             fi ;
             cd $GITHUB_WORKSPACE ;
           fi
+          if [[ "$BOARD" =~ "nrf54l15clean:nrf54l15clean:" ]]; then
+            arduino --pref "boardsmanager.additional.urls=https://raw.githubusercontent.com/lolren/NRF54L15-Clean-Arduino-core/main/package_nrf54l15clean_stable_index.json" --save-prefs ;
+            arduino --install-boards nrf54l15clean:nrf54l15clean:0.1.0 ;
+            arduino --board $BOARD --save-prefs ;
+            cd $GITHUB_WORKSPACE ;
+          fi
           if [[ "$BOARD" =~ "arduino:mbed_edge:" ]]; then
             arduino --pref "boardsmanager.additional.urls=https://downloads.arduino.cc/packages/package_index.json" --save-prefs ;
             arduino --install-boards arduino:mbed_edge:4.2.1 ;
@@ -594,6 +601,9 @@ jobs:
             arduino --verify --verbose-build --board $BOARD $PWD/software/firmware/source/SoftRF/SoftRF.ino ;
           fi ;
           if [[ "$BOARD" =~ "adafruit:nrf52:"      ]]; then
+            arduino --verify --verbose-build --board $BOARD $PWD/software/firmware/source/SoftRF/SoftRF.ino ;
+          fi ;
+          if [[ "$BOARD" =~ "nrf54l15clean:nrf54l15clean:" ]]; then
             arduino --verify --verbose-build --board $BOARD $PWD/software/firmware/source/SoftRF/SoftRF.ino ;
           fi ;
           if [[ "$BOARD" =~ "arduino:mbed_edge:"   ]]; then

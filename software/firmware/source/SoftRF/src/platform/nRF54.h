@@ -83,6 +83,8 @@ struct rst_info {
   uint32_t depc;
 };
 
+#define VBAT_MV_PER_LSB       (0.73242188F)   // 3.0V ADC range and 12-bit ADC resolution = 3000mV/4096
+
 #if !defined(_PINNUM)
 #define _PINNUM(port, pin)    ((port)*32 + (pin))
 #endif
