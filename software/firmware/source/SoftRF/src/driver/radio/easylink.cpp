@@ -144,12 +144,13 @@ void cc13xx_Receive_callback(EasyLink_RxPacket *rxPacket_ptr, EasyLink_Status st
     case RF_PROTOCOL_OGNTP:
     case RF_PROTOCOL_ADSL_860:
     case RF_PROTOCOL_LEGACY:
-      offset = cc13xx_protocol->syncword_size - 4;
-      size =  cc13xx_protocol->payload_offset +
-              cc13xx_protocol->payload_size +
-              cc13xx_protocol->payload_size +
-              cc13xx_protocol->crc_size +
-              cc13xx_protocol->crc_size;
+      offset  = cc13xx_protocol->syncword_size - 4;
+      offset -= cc13xx_protocol->type == RF_PROTOCOL_LEGACY ? 1 : 0;
+      size    = cc13xx_protocol->payload_offset +
+                cc13xx_protocol->payload_size   +
+                cc13xx_protocol->payload_size   +
+                cc13xx_protocol->crc_size       +
+                cc13xx_protocol->crc_size;
       if (rxPacket_ptr->len >= size + offset &&
           rxPacket_ptr->payload[0] == cc13xx_protocol->syncword[4] &&
           rxPacket_ptr->payload[1] == cc13xx_protocol->syncword[5] &&
@@ -448,7 +449,10 @@ static bool cc13xx_transmit()
     break;
   }
 
-  for (i = MAX_SYNCWORD_SIZE; i < cc13xx_protocol->syncword_size; i++)
+  i = MAX_SYNCWORD_SIZE;
+  i += cc13xx_protocol->type == RF_PROTOCOL_LEGACY ? 1 : 0;
+
+  for ( ; i < cc13xx_protocol->syncword_size; i++)
   {
     txPacket.payload[PayloadLen++] = cc13xx_protocol->syncword[i];
   }
