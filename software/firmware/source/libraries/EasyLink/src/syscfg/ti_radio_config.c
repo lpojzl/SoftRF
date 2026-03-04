@@ -433,7 +433,7 @@ const rfc_CMD_PROP_RADIO_DIV_SETUP_t RF_cmdPropRadioDivSetup_fsk_100kbps_legacy 
     .symbolRate.decimMode = 0x0,
     .rxBw = 0x54,
     .preamConf.nPreamBytes = 0x1,
-    .preamConf.preamMode = 0x2,
+    .preamConf.preamMode = 0x0,
     .formatConf.nSwBits = 0x20,
     .formatConf.bBitReversal = 0x0,
     .formatConf.bMsbFirst = 0x1,
