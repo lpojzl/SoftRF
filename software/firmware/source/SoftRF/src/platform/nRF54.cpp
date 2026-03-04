@@ -43,6 +43,13 @@
 #include "../driver/OLED.h"
 #endif /* USE_OLED */
 
+#if defined(ARDUINO_XIAO_NRF54L15)
+#include <variant.h>
+#include "nrf54l15_hal.h"
+
+using namespace xiao_nrf54l15;
+#endif /* ARDUINO_XIAO_NRF54L15 */
+
 // RFM95W pin mapping
 lmic_pinmap lmic_pins = {
     .nss = LMIC_UNUSED_PIN,
@@ -59,6 +66,8 @@ static struct rst_info reset_info = {
 };
 
 static uint32_t bootCount __attribute__ ((section (".noinit")));
+static Watchdog g_wdt;
+static bool wdt_is_active = false;
 
 static nRF54_board_id nRF54_board = NRF54_LR2021EVK1XCS1; /* default */
 
@@ -147,8 +156,80 @@ char *dtostrf_workaround(double number, signed char width, unsigned char prec, c
     return s;
 }
 
+#ifdef NRF_TRUSTZONE_NONSECURE
+static constexpr uintptr_t kPowerBase = 0x4010E000UL;
+static constexpr uintptr_t kResetBase = 0x4010E000UL;
+static constexpr uintptr_t kRegulatorsBase = 0x40120000UL;
+#else
+static constexpr uintptr_t kPowerBase = 0x5010E000UL;
+static constexpr uintptr_t kResetBase = 0x5010E000UL;
+static constexpr uintptr_t kRegulatorsBase = 0x50120000UL;
+#endif
+
+
+static NRF_POWER_Type* const g_power =
+    reinterpret_cast<NRF_POWER_Type*>(kPowerBase);
+static NRF_RESET_Type* const g_reset =
+    reinterpret_cast<NRF_RESET_Type*>(kResetBase);
+static NRF_REGULATORS_Type* const g_regulators =
+    reinterpret_cast<NRF_REGULATORS_Type*>(kRegulatorsBase);
+
+static inline void cpuIdleWfi() {
+  __asm volatile("wfi");
+}
+
+static uint32_t readResetReason() {
+  return g_reset->RESETREAS;
+}
+
+static uint8_t readGpregret0() {
+  return static_cast<uint8_t>(g_power->GPREGRET[0] &
+                              POWER_GPREGRET_GPREGRET_Msk);
+}
+
 static void nRF54_setup()
 {
+  uint32_t reset_reason = readResetReason();
+
+  if      (reset_reason & RESET_RESETREAS_RESETPIN_Msk)
+  {
+      reset_info.reason = REASON_EXT_SYS_RST;
+  }
+  else if (reset_reason & (RESET_RESETREAS_DOG0_Msk | RESET_RESETREAS_DOG1_Msk))
+  {
+      reset_info.reason = REASON_WDT_RST;
+  }
+  else if (reset_reason & RESET_RESETREAS_SREQ_Msk)
+  {
+      reset_info.reason = REASON_SOFT_RESTART;
+  }
+  else if (reset_reason & RESET_RESETREAS_LOCKUP_Msk)
+  {
+      reset_info.reason = REASON_SOFT_WDT_RST;
+  }
+  else if (reset_reason & RESET_RESETREAS_OFF_Msk)
+  {
+      reset_info.reason = REASON_DEEP_SLEEP_AWAKE;
+  }
+  else if (reset_reason & RESET_RESETREAS_LPCOMP_Msk)
+  {
+      reset_info.reason = REASON_DEEP_SLEEP_AWAKE;
+  }
+  else if (reset_reason & RESET_RESETREAS_DIF_Msk)
+  {
+      reset_info.reason = REASON_DEEP_SLEEP_AWAKE;
+  }
+  else if (reset_reason & RESET_RESETREAS_NFC_Msk)
+  {
+      reset_info.reason = REASON_DEEP_SLEEP_AWAKE;
+#if NRF_RESET_HAS_VBUS_RESET
+  }
+  else if (reset_reason & RESET_RESETREAS_VBUS_Msk)
+  {
+      reset_info.reason = REASON_DEEP_SLEEP_AWAKE;
+#endif
+  }
+
   switch (nRF54_board)
   {
     case NRF54_LR2021EVK1XCS1:
@@ -160,8 +241,27 @@ static void nRF54_setup()
       lmic_pins.dio[0] = SOC_GPIO_PIN_EVK_DIO8;
 #endif /* USE_RADIOLIB */
 
-      pinMode(SOC_GPIO_PIN_EVK_STATUS, OUTPUT);
+      pinMode(SOC_GPIO_PIN_EVK_STATUS,     OUTPUT);
       digitalWrite(SOC_GPIO_PIN_EVK_STATUS, LED_STATE_ON);
+
+      #if defined(ARDUINO_XIAO_NRF54L15)
+      // Gpio::configure(kPinVbatEnable, GpioDirection::kOutput, GpioPull::kDisabled);
+      // Gpio::write(kPinVbatEnable, true);
+      BoardControl::setBatterySenseEnabled(true);
+      #else
+      pinMode(SOC_GPIO_PIN_EVK_VBAT_EN,    INPUT_PULLDOWN);
+      #endif /* ARDUINO_XIAO_NRF54L15 */
+      pinMode(SOC_GPIO_PIN_EVK_BUTTON_AUX, INPUT_PULLUP);
+
+      pinMode(SOC_GPIO_PIN_EVK_ANT_PWR,    OUTPUT);
+      digitalWrite(SOC_GPIO_PIN_EVK_ANT_PWR, HIGH);
+
+      #if defined(ARDUINO_XIAO_NRF54L15)
+      xiaoNrf54l15SetAntenna(XIAO_NRF54L15_ANTENNA_CERAMIC);
+      #else
+      pinMode(SOC_GPIO_PIN_EVK_ANT_SW,     INPUT_PULLDOWN); /* ANT 1 */
+      #endif /* ARDUINO_XIAO_NRF54L15 */
+
       break;
   }
 }
@@ -220,12 +320,20 @@ static void nRF54_post_init()
 
 static void nRF54_loop()
 {
-
+  if (wdt_is_active && g_wdt.isRunning()) {
+    g_wdt.feed();
+  }
 }
 
 static void nRF54_fini(int reason)
 {
+  g_regulators->SYSTEMOFF = REGULATORS_SYSTEMOFF_SYSTEMOFF_Enter;
 
+  __asm volatile("dsb 0xF" ::: "memory");
+
+  while (true) {
+    cpuIdleWfi();
+  }
 }
 
 static void nRF54_reset()
@@ -235,7 +343,19 @@ static void nRF54_reset()
 
 static uint32_t nRF54_getChipId()
 {
-  return 0;
+  uint32_t ficrBase = nrf54l15::FICR_BASE;
+  NRF_FICR_Type* const ficr = reinterpret_cast<NRF_FICR_Type*>(ficrBase);
+
+  const uint32_t lo = ficr->DEVICEADDR[0];
+  const uint32_t hi = ficr->DEVICEADDR[1];
+
+#if !defined(SOFTRF_ADDRESS)
+  uint32_t id = lo;
+
+  return DevID_Mapper(id);
+#else
+  return (SOFTRF_ADDRESS & 0xFFFFFFFFU );
+#endif
 }
 
 static void* nRF54_getResetInfoPtr()
@@ -275,7 +395,6 @@ static long nRF54_random(long howsmall, long howBig)
 {
   return random(howsmall, howBig);
 }
-
 
 static void nRF54_Sound_test(int var)
 {
@@ -408,6 +527,13 @@ static float nRF54_Battery_param(uint8_t param)
     break;
 
   case BATTERY_PARAM_CHARGE:
+#if defined(ARDUINO_XIAO_NRF54L15)
+    {
+      uint8_t vbatPercent = 0;
+      BoardControl::sampleBatteryPercent(&vbatPercent);
+      rval = vbatPercent;
+    }
+#else
     voltage = Battery_voltage();
     if (voltage < Battery_cutoff())
       return 0;
@@ -422,10 +548,18 @@ static float nRF54_Battery_param(uint8_t param)
 
     voltage -= 3.6;
     rval = 10 + (voltage * 150 );
+#endif /* ARDUINO_XIAO_NRF54L15 */
     break;
 
   case BATTERY_PARAM_VOLTAGE:
   default:
+#if defined(ARDUINO_XIAO_NRF54L15)
+    {
+      int32_t vbatMilliVolts = 0;
+      BoardControl::sampleBatteryMilliVolts(&vbatMilliVolts);
+      voltage = vbatMilliVolts;
+    }
+#else
     voltage = 0.0;
 #if 0
     // Set the analog reference to 3.0V (default = 3.6V)
@@ -459,7 +593,7 @@ static float nRF54_Battery_param(uint8_t param)
     // divider into account (providing the actual LIPO voltage)
     // ADC range is 0..3000mV and resolution is 12-bit (0..4095)
     voltage *= (mult * VBAT_MV_PER_LSB);
-
+#endif /* ARDUINO_XIAO_NRF54L15 */
     rval = voltage * 0.001;
     break;
   }
@@ -491,12 +625,19 @@ static void nRF54_UATModule_restart()
 
 static void nRF54_WDT_setup()
 {
+  wdt_is_active = g_wdt.configure(4000U, 0U, false, false, true);
 
+  if (wdt_is_active) {
+    g_wdt.start();
+    g_wdt.feed();
+  }
 }
 
 static void nRF54_WDT_fini()
 {
-
+  if (wdt_is_active && g_wdt.isRunning()) {
+    g_wdt.stop();
+  }
 }
 
 #include <AceButton.h>
