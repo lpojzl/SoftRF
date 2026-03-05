@@ -41,7 +41,6 @@ jobs:
             'CubeCell:CubeCell:CubeCell-GPS',
             'CubeCell:CubeCell:CubeCell-Board-PRO',
             'adafruit:nrf52:pca10056',
-            'nrf54l15clean:nrf54l15clean:xiao_nrf54l15',
             'arduino:mbed_edge:edge_control',
             'arduino:zephyr_main:nano33ble',
             'arduino:samd:mzero_bl',
@@ -57,7 +56,8 @@ jobs:
             'arduino:mbed_rp2040:pico',
             #'arduino:mbed_nano:nanorp2040connect',
             'SiliconLabs:silabs:nano_matter:protocol_stack=ble_arduino',
-            'WCH:ch32v:CH32V30x_EVT'
+            'WCH:ch32v:CH32V30x_EVT',
+            'nrf54l15clean:nrf54l15clean:xiao_nrf54l15'
           ]
 
     env:
@@ -402,12 +402,8 @@ jobs:
           fi
           if [[ "$BOARD" =~ "nrf54l15clean:nrf54l15clean:" ]]; then
             arduino --pref "boardsmanager.additional.urls=https://raw.githubusercontent.com/lolren/NRF54L15-Clean-Arduino-core/main/package_nrf54l15clean_stable_index.json" --save-prefs ;
-            # arduino --install-boards nrf54l15clean:nrf54l15clean:0.1.7 ;
             arduino --install-boards nrf54l15clean:nrf54l15clean ;
             arduino --board $BOARD --save-prefs ;
-            # cd $HOME/.arduino15/packages/nrf54l15clean/hardware/nrf54l15clean/0.1.7 ;
-            # sed -i '15 a #include <avr/pgmspace.h>'  cores/nrf54l15/WString.h ;
-            # sed -i '16 a class __FlashStringHelper;' cores/nrf54l15/WString.h ;
             cd $GITHUB_WORKSPACE ;
           fi
           if [[ "$BOARD" =~ "arduino:mbed_edge:" ]]; then
@@ -446,7 +442,7 @@ jobs:
           fi
           if [[ "$BOARD" =~ "rp2040:rp2040:" ]]; then
             arduino --pref "boardsmanager.additional.urls=https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json" --save-prefs ;
-            arduino --install-boards rp2040:rp2040:5.5.0 ;
+            arduino --install-boards rp2040:rp2040:5.5.1 ;
             arduino --board $BOARD --save-prefs ;
             if [[ "$BOARD" =~ "rp2040:rp2040:rpipicow" ]]; then
               arduino --pref "custom_freq=rpipicow_120"               --save-prefs ;
@@ -607,9 +603,6 @@ jobs:
           if [[ "$BOARD" =~ "adafruit:nrf52:"      ]]; then
             arduino --verify --verbose-build --board $BOARD $PWD/software/firmware/source/SoftRF/SoftRF.ino ;
           fi ;
-          if [[ "$BOARD" =~ "nrf54l15clean:nrf54l15clean:" ]]; then
-            arduino --verify --verbose-build --board $BOARD $PWD/software/firmware/source/SoftRF/SoftRF.ino ;
-          fi ;
           if [[ "$BOARD" =~ "arduino:mbed_edge:"   ]]; then
             arduino --verify --verbose-build --board $BOARD $PWD/software/firmware/source/SoftRF/SoftRF.ino ;
           fi ;
@@ -642,4 +635,7 @@ jobs:
           fi ;
           if [[ "$BOARD" =~ "arduino:zephyr_main:" ]]; then
             arduino-cli compile -v -b "$BOARD" $PWD/software/firmware/source/SoftRF ;
+          fi ;
+          if [[ "$BOARD" =~ "nrf54l15clean:nrf54l15clean:" ]]; then
+            arduino --verify --verbose-build --board $BOARD $PWD/software/firmware/source/SoftRF/SoftRF.ino ;
           fi ;
