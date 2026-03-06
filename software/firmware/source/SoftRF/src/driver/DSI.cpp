@@ -81,6 +81,9 @@ void gesture_event_handler(lv_event_t * e)
 #include <SensorLib_Version.h>
 #include "TouchDrvGT911.hpp"
 #include "TouchDrvGT9895.hpp"
+#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4)
+#include "TouchDrvHI8561.hpp"
+#endif /* SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4) */
 
 typedef struct TP_Point_struct {
   int16_t x;
@@ -106,7 +109,12 @@ bool setupTouchDrv()
     switch (hw_info.touch)
     {
     case TOUCH_JD9365TG:
-      /* TBD */
+#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4)
+      touchDrv = new TouchDrvHI8561();
+      touchDrv->setPins(-1 /* XL P03 */, -1 /* XL P04 */);
+      result = touchDrv->begin(TDP4_IIC_1, HI8561_ADDRESS,
+                               SOC_GPIO_PIN_TDP4_SDA_1, SOC_GPIO_PIN_TDP4_SCL_1);
+#endif /* SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4) */
       break;
     case TOUCH_GT9895:
       touchDrv = new TouchDrvGT9895();

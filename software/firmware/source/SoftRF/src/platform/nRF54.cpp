@@ -233,6 +233,8 @@ static void nRF54_setup()
   {
     case NRF54_LR2021EVK1XCS1:
     default:
+      Wire.setPins(SOC_GPIO_PIN_EVK_SDA, SOC_GPIO_PIN_EVK_SCL);
+
       lmic_pins.nss  = SOC_GPIO_PIN_EVK_SS;
       lmic_pins.rst  = SOC_GPIO_PIN_EVK_RST;
       lmic_pins.busy = SOC_GPIO_PIN_EVK_BUSY;
