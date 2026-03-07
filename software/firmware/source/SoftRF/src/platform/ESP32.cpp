@@ -537,6 +537,8 @@ TwoWire Wire2 = TwoWire(2);
 ExtensionIOXL9555 *xl9535 = nullptr;
 GaugeBQ27220      bq_27220;
 ICM_20948_I2C     imu_icm20948;
+
+#include "../driver/GNSS.h"
 #endif /* CONFIG_IDF_TARGET_ESP32P4 */
 #endif /* CONFIG_IDF_TARGET_ESP32S3-P4 */
 
@@ -4695,9 +4697,13 @@ static void ESP32_swSer_begin(unsigned long baud)
       Serial_GNSS_In.begin(baud, SERIAL_IN_BITS,
                            SOC_GPIO_PIN_P4_GNSS_RX, SOC_GPIO_PIN_P4_GNSS_TX);
     } else if (esp32_board == ESP32_LILYGO_TDISPLAY_P4) {
-      Serial.println(F("INFO: LilyGO T-Display-P4 is detected."));
-      Serial_GNSS_In.begin(115200 /* baud */, SERIAL_IN_BITS,
+      Serial.println(F("INFO: LilyGO T-Display P4 is detected."));
+      /* permit 115200 GNSS baud rate left from T-Display P4 factory firmware */
+      Serial_GNSS_In.begin(115200, SERIAL_IN_BITS,
                            SOC_GPIO_PIN_TDP4_GNSS_RX, SOC_GPIO_PIN_TDP4_GNSS_TX);
+      if (generic_nmea_ops.probe() == GNSS_MODULE_NONE) {
+        Serial_GNSS_In.updateBaudRate(baud);
+      }
 #endif /* CONFIG_IDF_TARGET_ESP32P4 */
     } else {
       /* open Standalone's GNSS port */
