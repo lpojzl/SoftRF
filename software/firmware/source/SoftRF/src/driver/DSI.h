@@ -26,6 +26,7 @@
 #define NO_TRAFFIC_TEXT         "NO TRAFFIC"
 
 #define isTimeToDisplay()       (millis() - DSI_TimeMarker > 1000)
+#define isTimeToTPSense()       (millis() - TP_TimeMarker  > 100 )
 
 #define DSI_RADAR_V_THRESHOLD   50      /* metres */
 

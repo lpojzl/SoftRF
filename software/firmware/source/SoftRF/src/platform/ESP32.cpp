@@ -520,12 +520,12 @@ esp_err_t es8311_codec_init(const unsigned int i2c_num) {
 #include <SensorLib_Version.h>
 #if SENSORLIB_VERSION == SENSORLIB_VERSION_VAL(0, 3, 1)
 #include <ExtensionIOXL9555.hpp>
-#endif /* 0, 3, 1 */
-#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4)
+#endif /* (0, 3, 1) */
+#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 4, 0)
 #include "IoExpanderXL9555.hpp"
 
 #define ExtensionIOXL9555 IoExpanderXL9555
-#endif /* 0, 3, 4 */
+#endif /* (0, 4, 0) */
 #include <GaugeBQ27220.hpp>
 #include <ICM_20948.h>
 #include <TouchDrvGT911.hpp>

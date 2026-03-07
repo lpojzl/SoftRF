@@ -42,7 +42,8 @@ const char DSI_SkyView_text5 [] = "Screen";
 const char DSI_SkyView_text6 [] = "Saver";
 const char DSI_SkyView_text7 [] = "VERSION " SOFTRF_FIRMWARE_VERSION;
 
-unsigned long DSI_TimeMarker = 0;
+static unsigned long DSI_TimeMarker = 0;
+static unsigned long TP_TimeMarker  = 0;
 
 static int DSI_view_mode = 0;
 bool DSI_vmode_updated = true;
@@ -81,9 +82,9 @@ void gesture_event_handler(lv_event_t * e)
 #include <SensorLib_Version.h>
 #include "TouchDrvGT911.hpp"
 #include "TouchDrvGT9895.hpp"
-#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4)
+#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 4, 0)
 #include "TouchDrvHI8561.hpp"
-#endif /* SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4) */
+#endif /* (0, 4, 0) */
 
 typedef struct TP_Point_struct {
   int16_t x;
@@ -109,25 +110,25 @@ bool setupTouchDrv()
     switch (hw_info.touch)
     {
     case TOUCH_JD9365TG:
-#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4)
+#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 4, 0)
       touchDrv = new TouchDrvHI8561();
       touchDrv->setPins(-1 /* XL P03 */, -1 /* XL P04 */);
       result = touchDrv->begin(TDP4_IIC_1, HI8561_ADDRESS,
                                SOC_GPIO_PIN_TDP4_SDA_1, SOC_GPIO_PIN_TDP4_SCL_1);
-#endif /* SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4) */
+#endif /* (0, 4, 0) */
       break;
     case TOUCH_GT9895:
       touchDrv = new TouchDrvGT9895();
       touchDrv->setPins(-1 /* XL P03 */, -1 /* XL P04 */);
       result = touchDrv->begin(TDP4_IIC_1, GT9895_SLAVE_ADDRESS_L,
                                SOC_GPIO_PIN_TDP4_SDA_1, SOC_GPIO_PIN_TDP4_SCL_1);
-#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4)
+#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 4, 0)
       touchDrv->setResolution(1060, 2400);
       touchDrv->setTargetResolution(panel->getLCD()->getFrameWidth(),
                                     panel->getLCD()->getFrameHeight());
       // touchDrv->setMaxCoordinates(panel->getLCD()->getFrameWidth(),
       //                             panel->getLCD()->getFrameHeight());
-#endif /* SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4) */
+#endif /* (0, 4, 0) */
       break;
     case TOUCH_GT911:
     default:
@@ -214,6 +215,7 @@ void DSI_setup()
   DSI_radar_setup();
 
   DSI_TimeMarker = millis();
+  TP_TimeMarker  = millis();
 }
 
 void DSI_loop()
@@ -240,7 +242,7 @@ void DSI_loop()
       }
 
 #if defined(USE_SENSORLIB_TOUCH)
-      if (touchDrv) {
+      if (touchDrv && isTimeToTPSense()) {
 #if SENSORLIB_VERSION == SENSORLIB_VERSION_VAL(0, 3, 1)
         if (touchDrv->isPressed()) {
             uint8_t touched = touchDrv->getPoint(x, y, touchDrv->getSupportTouchPoint());
@@ -275,9 +277,9 @@ void DSI_loop()
                 gesture.touched = true;
               }
             }
-#endif /* SENSORLIB_VERSION == SENSORLIB_VERSION_VAL(0, 3, 1) */
+#endif /* (0, 3, 1) */
 
-#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4)
+#if SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 4, 0)
         TouchPoints touch_points = touchDrv->getTouchPoints();
         if (touch_points.hasPoints()) {
             int i = 0;
@@ -306,7 +308,7 @@ void DSI_loop()
               gesture.t_loc = p; gesture.d_loc = p;
               gesture.touched = true;
             }
-#endif /* SENSORLIB_VERSION >= SENSORLIB_VERSION_VAL(0, 3, 4) */
+#endif /* (0, 4, 0) */
         } else {
 //            Serial.println("isPressed() = false");
             if (gesture.touched) {
@@ -336,6 +338,8 @@ void DSI_loop()
                /* TBD */
             }
         }
+
+        TP_TimeMarker = millis();
       }
 #endif /* USE_SENSORLIB_TOUCH */
 
