@@ -86,6 +86,7 @@ enum nRF52_board_id {
   NRF52_ELECROW_TN_M3,
   NRF52_ELECROW_TN_M6,
   NRF52_SEEED_WIO_L1,
+  NRF52_SEEED_T2000,
 };
 
 enum nRF52_display_id {
