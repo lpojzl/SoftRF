@@ -40,7 +40,7 @@ enum {
 
 void DSI_setup();
 void DSI_loop();
-void DSI_fini();
+void DSI_fini(int);
 
 void DSI_Up();
 void DSI_Down();

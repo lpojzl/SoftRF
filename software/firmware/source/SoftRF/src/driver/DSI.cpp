@@ -24,6 +24,9 @@
 
 #include "LED.h"
 #include "EPD.h"
+#include "RF.h"
+#include "Baro.h"
+#include "../system/Time.h"
 
 #include <esp_display_panel.hpp>
 
@@ -36,8 +39,8 @@ Board *panel = NULL;
 
 const char DSI_SoftRF_text1 [] = SOFTRF_IDENT;
 const char DSI_SoftRF_text2 [] = "Author:  Linar Yusupov  (C) 2016-2026";
-const char DSI_SoftRF_text3 [] = "POWER";
-const char DSI_SoftRF_text4 [] = "OFF";
+const char DSI_SoftRF_text3 [] = "POWER OFF";
+const char DSI_SoftRF_text4 [] = "LOW BATTERY";
 const char DSI_SoftRF_text5 [] = "Screen";
 const char DSI_SoftRF_text6 [] = "Saver";
 const char DSI_SoftRF_text7 [] = "VERSION " SOFTRF_FIRMWARE_VERSION;
@@ -373,7 +376,7 @@ void DSI_loop()
   }
 }
 
-void DSI_fini()
+void DSI_fini(int reason)
 {
   if (panel) {
     lvgl_port_lock(-1);
@@ -382,7 +385,8 @@ void DSI_fini()
     lv_obj_clean(lv_scr_act());
 
     lv_obj_t *label_1 = lv_label_create(lv_scr_act());
-    lv_label_set_text(label_1, DSI_SoftRF_text4);
+    lv_label_set_text(label_1, reason == SOFTRF_SHUTDOWN_LOWBAT ?
+                      DSI_SoftRF_text4 : DSI_SoftRF_text3);
     lv_obj_set_style_text_font(label_1, &lv_font_montserrat_48, 0);
     lv_obj_align(label_1, LV_ALIGN_CENTER, 0, -60);
 
@@ -481,8 +485,9 @@ void DSI_info1()
 #if LVGL_VERSION_MAJOR == 8
       lv_obj_clean(lv_scr_act());
 
+      {
       lv_obj_t *label_1 = lv_label_create(lv_scr_act());
-      lv_label_set_text(label_1, "          Self Test");
+      lv_label_set_text(label_1, "          SELF TEST");
       lv_obj_set_style_text_font(label_1, &lv_font_montserrat_48, 0);
       lv_obj_align(label_1, LV_ALIGN_OUT_TOP_LEFT, 40, 20);
 
@@ -616,11 +621,12 @@ void DSI_info1()
                                   lv_palette_main(LV_PALETTE_GREEN) :
                                   lv_palette_main(LV_PALETTE_YELLOW), 0);
       lv_obj_align_to(data_10, data_9, LV_ALIGN_OUT_BOTTOM_RIGHT, 0, 0);
+      }
 #endif /* LVGL_VERSION_MAJOR == 8 */
 
       lvgl_port_unlock();
 
-      delay(3000);
+      delay(4000);
 
       break;
     case DISPLAY_NONE:

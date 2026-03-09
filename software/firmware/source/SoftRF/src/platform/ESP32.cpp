@@ -539,6 +539,9 @@ GaugeBQ27220      bq_27220;
 ICM_20948_I2C     imu_icm20948;
 
 #include "../driver/GNSS.h"
+#if defined(USE_DSI)
+#include "../driver/DSI.h"
+#endif /* USE_DSI */
 #endif /* CONFIG_IDF_TARGET_ESP32P4 */
 #endif /* CONFIG_IDF_TARGET_ESP32S3-P4 */
 
@@ -4772,9 +4775,6 @@ static byte ESP32_OLED_ident(TwoWire *bus)
 #endif /* USE_OLED */
 
 #if defined(USE_DSI)
-
-#include "../driver/DSI.h"
-
 #include <esp_display_panel.hpp>
 
 using namespace esp_panel::drivers;
@@ -6001,7 +6001,7 @@ static void ESP32_Display_fini(int reason)
   case DISPLAY_TFT_WIRELESSTAG_7:
   case DISPLAY_TFT_LILYGO_4_05:
   case DISPLAY_AMOLED_LILYGO_4_1:
-    DSI_fini();
+    DSI_fini(reason);
     break;
 #endif /* USE_DSI */
 
