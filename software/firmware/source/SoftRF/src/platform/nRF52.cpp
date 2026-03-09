@@ -990,6 +990,9 @@ static void nRF52_setup()
     case NRF52_SEEED_WIO_L1:
       Wire.setPins(SOC_GPIO_PIN_L1_OLED_SDA, SOC_GPIO_PIN_L1_OLED_SCL); /* TBD */
       break;
+    case NRF52_SEEED_T2000:
+      Wire.setPins(SOC_GPIO_PIN_T2000_SDA, SOC_GPIO_PIN_T2000_SCL);
+      break;
 #endif /* EXCLUDE_WIP */
     case NRF52_SEEED_T1000E:
       Wire.setPins(SOC_GPIO_PIN_T1000_SDA, SOC_GPIO_PIN_T1000_SCL);
@@ -1126,6 +1129,14 @@ static void nRF52_setup()
                                                     SOC_GPIO_PIN_SFL_L1_WP,
                                                     SOC_GPIO_PIN_SFL_L1_HOLD);
       break;
+    case NRF52_SEEED_T2000:
+      FlashTrans = new Adafruit_FlashTransport_QSPI(SOC_GPIO_PIN_SFL_T2000_SCK,
+                                                    SOC_GPIO_PIN_SFL_T2000_SS,
+                                                    SOC_GPIO_PIN_SFL_T2000_MOSI,
+                                                    SOC_GPIO_PIN_SFL_T2000_MISO,
+                                                    SOC_GPIO_PIN_SFL_T2000_WP,
+                                                    SOC_GPIO_PIN_SFL_T2000_HOLD);
+      break;
 #endif /* EXCLUDE_WIP */
     case NRF52_NORDIC_PCA10059:
     case NRF52_ELECROW_TN_M3:
@@ -1217,6 +1228,24 @@ static void nRF52_setup()
   }
 #endif /* USE_OLED */
 
+#if !defined(EXCLUDE_WIP)
+  if (nRF52_board == NRF52_SEEED_T2000) {
+    hw_info.model      = SOFTRF_MODEL_RUGGED;
+    nRF52_Device_Model = "Rugged Edition";
+    nRF52_USB_VID      = 0x2886; /* Seeed Technology */
+    nRF52_USB_PID      = 0x1668; /* TBD */
+
+    if (reset_reason & POWER_RESETREAS_VBUS_Msk) {
+      NRF_POWER->GPREGRET = DFU_MAGIC_SKIP;
+      pinMode(SOC_GPIO_PIN_IO_PWR, INPUT);
+#if !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_ARCH_ZEPHYR)
+      pinMode(SOC_GPIO_PIN_T2000_BUTTON, INPUT_PULLUP_SENSE);
+#endif /* ARDUINO_ARCH_MBED */
+      nRF52_system_off();
+    }
+  }
+#endif /* EXCLUDE_WIP */
+
 #if !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_ARCH_ZEPHYR)
   USBDevice.setID(nRF52_USB_VID, nRF52_USB_PID);
   USBDevice.setManufacturerDescriptor(nRF52_Device_Manufacturer);
@@ -1230,6 +1259,12 @@ static void nRF52_setup()
 #if !defined(EXCLUDE_WIP)
     case NRF52_LILYGO_TULTIMA:
       /* TBD */
+      break;
+    case NRF52_SEEED_T2000:
+      Serial1.setPins(SOC_GPIO_PIN_CONS_T2000_RX, SOC_GPIO_PIN_CONS_T2000_TX);
+#if defined(EXCLUDE_WIFI)
+      Serial1.begin(SERIAL_OUT_BR, SERIAL_OUT_BITS);
+#endif /* EXCLUDE_WIFI */
       break;
 #endif /* EXCLUDE_WIP */
     case NRF52_SEEED_T1000E:
@@ -1277,14 +1312,10 @@ static void nRF52_setup()
 #if !defined(EXCLUDE_WIP)
     case NRF52_LILYGO_TULTIMA:
 #if !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_ARCH_ZEPHYR)
-      xl9555 = new ExtensionIOXL9555(Wire,
-                                     SOC_GPIO_PIN_TULTIMA_SDA,
-                                     SOC_GPIO_PIN_TULTIMA_SCL,
-                                     XL9555_ADDRESS);
-      nRF52_has_extension = xl9555->init(Wire,
-                                         SOC_GPIO_PIN_TULTIMA_SDA,
-                                         SOC_GPIO_PIN_TULTIMA_SCL,
-                                         XL9555_ADDRESS);
+      xl9555 = new ExtensionIOXL9555();
+      nRF52_has_extension = xl9555->begin(Wire, XL9555_ADDRESS,
+                                          SOC_GPIO_PIN_TULTIMA_SDA,
+                                          SOC_GPIO_PIN_TULTIMA_SCL);
       if (nRF52_has_extension) {
         xl9555->digitalWrite(ExtensionIOXL9555::I2C_EXP_PIN_GNSS_TULTIMA_PWR, HIGH);
         xl9555->digitalWrite(ExtensionIOXL9555::I2C_EXP_PIN_SENS_TULTIMA_PWR, HIGH);
@@ -1314,6 +1345,11 @@ static void nRF52_setup()
     case NRF52_SEEED_WIO_L1:
       digitalWrite(SOC_GPIO_PIN_L1_VBAT_EN, HIGH);
       pinMode(SOC_GPIO_PIN_L1_VBAT_EN, OUTPUT);
+      /* TBD */
+      break;
+    case NRF52_SEEED_T2000:
+      digitalWrite(SOC_GPIO_PIN_T2000_VBAT_EN, HIGH);
+      pinMode(SOC_GPIO_PIN_T2000_VBAT_EN, OUTPUT);
       /* TBD */
       break;
 #endif /* EXCLUDE_WIP */
@@ -1490,6 +1526,24 @@ static void nRF52_setup()
       lmic_pins.nss  = SOC_GPIO_PIN_L1_SS;
       lmic_pins.rst  = SOC_GPIO_PIN_L1_RST;
       lmic_pins.busy = SOC_GPIO_PIN_L1_BUSY;
+
+      hw_info.revision = 3; /* Unknown */
+      break;
+
+    case NRF52_SEEED_T2000:
+      /* Wake up Quectel L76K GNSS */
+      digitalWrite(SOC_GPIO_PIN_GNSS_T2000_WKE, HIGH);
+      pinMode(SOC_GPIO_PIN_GNSS_T2000_WKE, OUTPUT);
+
+      pinMode(SOC_GPIO_LED_T2000_GREEN, OUTPUT);
+      // pinMode(SOC_GPIO_LED_T2000_BLUE,  OUTPUT);
+
+      digitalWrite(SOC_GPIO_LED_T2000_GREEN, LED_STATE_ON);
+      // digitalWrite(SOC_GPIO_LED_T2000_BLUE,  LED_STATE_ON);
+
+      lmic_pins.nss  = SOC_GPIO_PIN_T2000_SS;
+      lmic_pins.rst  = SOC_GPIO_PIN_T2000_RST;
+      lmic_pins.busy = SOC_GPIO_PIN_T2000_BUSY;
 
       hw_info.revision = 3; /* Unknown */
       break;
@@ -2654,6 +2708,22 @@ static void nRF52_fini(int reason)
 
       pinMode(SOC_GPIO_PIN_L1_VBAT_EN,   INPUT);
       break;
+
+    case NRF52_SEEED_T2000:
+      digitalWrite(SOC_GPIO_PIN_GNSS_T2000_WKE, LOW);
+
+      digitalWrite(SOC_GPIO_LED_T2000_GREEN, 1-LED_STATE_ON);
+      // digitalWrite(SOC_GPIO_LED_T2000_BLUE,  1-LED_STATE_ON);
+
+      pinMode(SOC_GPIO_LED_T2000_GREEN,  INPUT);
+      // pinMode(SOC_GPIO_LED_T2000_BLUE,   INPUT);
+
+      pinMode(SOC_GPIO_PIN_SFL_T2000_HOLD,  INPUT);
+      pinMode(SOC_GPIO_PIN_SFL_T2000_WP,    INPUT);
+      pinMode(SOC_GPIO_PIN_SFL_T2000_SS,    INPUT);
+
+      pinMode(SOC_GPIO_PIN_T2000_VBAT_EN,   INPUT);
+      break;
 #endif /* EXCLUDE_WIP */
 
     case NRF52_SEEED_T1000E:
@@ -2791,6 +2861,10 @@ static void nRF52_fini(int reason)
 
     case NRF52_SEEED_WIO_L1:
       mode_button_pin = SOC_GPIO_PIN_L1_BUTTON;
+      break;
+
+    case NRF52_SEEED_T2000:
+      mode_button_pin = SOC_GPIO_PIN_T2000_BUTTON;
       break;
 #endif /* EXCLUDE_WIP */
 
@@ -3267,6 +3341,12 @@ static void nRF52_SPI_begin()
                   SOC_GPIO_PIN_L1_SCK,
                   SOC_GPIO_PIN_L1_MOSI);
       break;
+
+    case NRF52_SEEED_T2000:
+      SPI.setPins(SOC_GPIO_PIN_T2000_MISO,
+                  SOC_GPIO_PIN_T2000_SCK,
+                  SOC_GPIO_PIN_T2000_MOSI);
+      break;
 #endif /* EXCLUDE_WIP */
     case NRF52_SEEED_T1000E:
       SPI.setPins(SOC_GPIO_PIN_T1000_MISO,
@@ -3318,6 +3398,10 @@ static void nRF52_swSer_begin(unsigned long baud)
     case NRF52_SEEED_WIO_L1:
       Serial_GNSS_In.setPins(SOC_GPIO_PIN_GNSS_L1_RX,
                              SOC_GPIO_PIN_GNSS_L1_TX);
+      break;
+    case NRF52_SEEED_T2000:
+      Serial_GNSS_In.setPins(SOC_GPIO_PIN_GNSS_T2000_RX,
+                             SOC_GPIO_PIN_GNSS_T2000_TX);
       break;
 #endif /* EXCLUDE_WIP */
     case NRF52_SEEED_T1000E:
@@ -3513,7 +3597,8 @@ static byte nRF52_Display_setup()
 
   if (nRF52_board == NRF52_NORDIC_PCA10059 ||
       nRF52_board == NRF52_SEEED_T1000E    ||
-      nRF52_board == NRF52_ELECROW_TN_M3) {
+      nRF52_board == NRF52_ELECROW_TN_M3   ||
+      nRF52_board == NRF52_SEEED_T2000) {
       /* Nothing to do */
   } else if (nRF52_board == NRF52_SEEED_WIO_L1) {
 #if defined(USE_OLED)
@@ -3994,6 +4079,7 @@ static float nRF52_Battery_param(uint8_t param)
            hw_info.model == SOFTRF_MODEL_DECENT   ? BATTERY_THRESHOLD_LIPO   :
            hw_info.model == SOFTRF_MODEL_SOLARIS  ? BATTERY_THRESHOLD_LIPO   :
            hw_info.model == SOFTRF_MODEL_POCKET   ? BATTERY_THRESHOLD_LIPO   :
+           hw_info.model == SOFTRF_MODEL_RUGGED   ? BATTERY_THRESHOLD_LIPO   :
                                                     BATTERY_THRESHOLD_NIMHX2;
     break;
 
@@ -4006,6 +4092,7 @@ static float nRF52_Battery_param(uint8_t param)
            hw_info.model == SOFTRF_MODEL_DECENT   ? BATTERY_CUTOFF_LIPO   :
            hw_info.model == SOFTRF_MODEL_SOLARIS  ? BATTERY_CUTOFF_LIPO   :
            hw_info.model == SOFTRF_MODEL_POCKET   ? BATTERY_CUTOFF_LIPO   :
+           hw_info.model == SOFTRF_MODEL_RUGGED   ? BATTERY_CUTOFF_LIPO   :
                                                     BATTERY_CUTOFF_NIMHX2;
     break;
 
@@ -4079,6 +4166,10 @@ static float nRF52_Battery_param(uint8_t param)
         case NRF52_SEEED_WIO_L1:
           bat_adc_pin = SOC_GPIO_PIN_L1_BATTERY;
           mult        = SOC_ADC_VOLTAGE_DIV;
+          break;
+        case NRF52_SEEED_T2000:
+          bat_adc_pin = SOC_GPIO_PIN_T2000_BATTERY;
+          mult        = SOC_ADC_T2000_VOLTAGE_DIV;
           break;
         case NRF52_LILYGO_TECHO_REV_0:
         case NRF52_LILYGO_TECHO_REV_1:
@@ -4264,6 +4355,10 @@ static void nRF52_Button_setup()
 
     case NRF52_SEEED_WIO_L1:
       mode_button_pin = SOC_GPIO_PIN_L1_BUTTON;
+      break;
+
+    case NRF52_SEEED_T2000:
+      mode_button_pin = SOC_GPIO_PIN_T2000_BUTTON;
       break;
 #endif /* EXCLUDE_WIP */
 
