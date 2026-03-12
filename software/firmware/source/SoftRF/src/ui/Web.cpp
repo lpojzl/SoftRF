@@ -441,16 +441,16 @@ char *Settings_content() {
 <td align=right>\
 <select name='band'>\
 <!--<option %s value='%d'>AUTO</option>-->\
-<option %s value='%d'>EU (868.2 MHz)</option>\
-<option %s value='%d'>RU (868.8 MHz)</option>\
-<option %s value='%d'>CN (470 MHz)</option>\
-<option %s value='%d'>US/CA (915 MHz)</option>\
-<option %s value='%d'>NZ (869.25 MHz)</option>\
-<!--<option %s value='%d'>UK (869.52 MHz)</option>-->\
-<option %s value='%d'>AU (921 MHz)</option>\
-<option %s value='%d'>IN (866 MHz)</option>\
-<option %s value='%d'>KR (920.9 MHz)</option>\
-<option %s value='%d'>IL (916.2 MHz)</option>\
+<option %s value='%d'>EU</option>\
+<option %s value='%d'>RU</option>\
+<option %s value='%d'>CN</option>\
+<option %s value='%d'>US/CA</option>\
+<option %s value='%d'>NZ</option>\
+<!--<option %s value='%d'>UK</option>-->\
+<option %s value='%d'>AU</option>\
+<option %s value='%d'>IN</option>\
+<option %s value='%d'>KR</option>\
+<option %s value='%d'>IL</option>\
 <!--<option %s value='%d'>Reserved</option>-->\
 </select>\
 </td>\
